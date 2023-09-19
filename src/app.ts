@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import swaggerApp from "./swagger";
 
 const app = express();
+
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());

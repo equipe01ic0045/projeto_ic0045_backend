@@ -38,7 +38,7 @@ export default class AuthController {
         maxAge: 3600000, // 1 hour in milliseconds
         sameSite: 'strict',
       });
-
+      
       res.status(200).json({ message: "Autenticação bem sucedida." });
     } else {
       res.status(401).json({ message: "Email ou senha inválidos." });
