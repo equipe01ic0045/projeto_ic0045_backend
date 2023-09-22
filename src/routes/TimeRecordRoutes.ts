@@ -65,7 +65,7 @@
  *       '401':
  *         description: Unauthorized. User is not authenticated.
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
@@ -78,21 +78,52 @@
  */
 
 import { Router } from "express";
-import authorize from "../middlewares/authorize";
 import TimeRecordController from "../controllers/TimeRecordController";
+import ProjectRelatedRoutes from "./abstract/ProjectRelatedRoutes";
+import { body } from "express-validator";
 
-const router = Router();
+export default class TimeRecordRoutes extends ProjectRelatedRoutes {
+  constructor(
+    protected controller: TimeRecordController = new TimeRecordController()
+  ) {
+    super(controller);
+  }
 
-const timeRecordController = new TimeRecordController();
-router.post(
-  "/:project_id/check-in",
-  authorize,
-  timeRecordController.checkInTimeRecord
-);
-router.put(
-  "/:project_id/check-out",
-  authorize,
-  timeRecordController.checkOutTimeRecord
-);
+  get router(): Router {
+    this._router.post(
+      "/:project_id/check-in",
+      [
+        ...this.projectIdValidation,
+        body("user_message")
+          .isString()
+          .withMessage("mensagem invalida")
+          .isLength({ max: 500 })
+          .withMessage(
+            "mensagem de check-in ultrapassou o limite de 500 caracteres"
+          ),
+        body("location").isString().withMessage("localizacao invalida"), // change that later, validate geophaphic location
+        body("check_in_timestamp")
+          .isISO8601()
+          .toDate()
+          .withMessage("datetime invalido"),
+      ],
+      this.validate,
+      this.controller.checkInTimeRecord
+    );
 
-export default router;
+    this._router.put(
+      "/:project_id/check-out",
+      [
+        ...this.projectIdValidation,
+        body("check_out_timestamp")
+          .isISO8601()
+          .toDate()
+          .withMessage("datetime invalido"),
+      ],
+      this.validate,
+      this.controller.checkOutTimeRecord
+    );
+
+    return this._router
+  }
+}

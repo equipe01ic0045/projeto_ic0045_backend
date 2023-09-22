@@ -12,7 +12,7 @@
  *     summary: Get the projects of the authenticated user
  *     tags: [Projects]
  *     security:
- *       - CookieAuth: [] 
+ *       - CookieAuth: []
  *     responses:
  *       '200':
  *         description: Successfully retrieved the user's projects.
@@ -27,7 +27,7 @@
  *     summary: Create a new project
  *     tags: [Projects]
  *     security:
- *       - CookieAuth: [] 
+ *       - CookieAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -55,7 +55,7 @@
  *     summary: Add a user to a project
  *     tags: [Projects]
  *     security:
- *       - CookieAuth: [] 
+ *       - CookieAuth: []
  *     parameters:
  *       - in: path
  *         name: project_id
@@ -96,7 +96,7 @@
  *     summary: Get the users of a project
  *     tags: [Projects]
  *     security:
- *       - CookieAuth: [] 
+ *       - CookieAuth: []
  *     parameters:
  *       - in: path
  *         name: project_id
@@ -118,7 +118,7 @@
  *     summary: Update a user's role in a project
  *     tags: [Projects]
  *     security:
- *       - CookieAuth: [] 
+ *       - CookieAuth: []
  *     parameters:
  *       - in: path
  *         name: project_id
@@ -152,21 +152,70 @@
  *         description: Unauthorized. User is not authenticated.
  */
 
-import { Router } from "express";
-import authorize from "../middlewares/authorize";
 import ProjectController from "../controllers/ProjectController";
+import ProjectRelatedRoutes from "./abstract/ProjectRelatedRoutes";
+import { body } from "express-validator";
+import { UserRole } from "@prisma/client";
+import { Router } from "express";
 
-const router = Router();
-const projectController = new ProjectController();
+export default class ProjectRoutes extends ProjectRelatedRoutes {
+  constructor(
+    protected controller: ProjectController = new ProjectController()
+  ) {
+    super(controller);
+  }
 
-router.get("/", authorize, projectController.getUserProjects);
-router.post("/", authorize, projectController.createNewProject);
-router.post(
-  "/:project_id/users",
-  authorize,
-  projectController.addUserToProject
-);
-router.get("/:project_id/users", authorize, projectController.getProjectUsers);
-router.put("/:project_id/users", authorize, projectController.updateUserRole);
+  get router(): Router {
+    this._router.get("/", this.controller.getUserProjects);
+    this._router.post(
+      "/",
+      [
+        body("project_name")
+          .notEmpty()
+          .withMessage("Nome do projeto requerido")
+          .custom((value: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value))
+          .withMessage(
+            'Nome do projeto inválido. Nomes de projeto devem ter apenas letras minúsculas e números separados por hífen, examplo: "examplo-nome-de-projeto-32"'
+          ),
+      ],
+      this.validate,
+      this.controller.createNewProject
+    );
 
-export default router;
+    this._router.get(
+      "/:project_id/users",
+      ...this.projectIdValidation,
+      this.validate,
+      this.controller.getProjectUsers
+    );
+
+    const userProjectRoleValidation = [
+      ...this.projectIdValidation,
+      body("user_id").isInt().withMessage("ID do usuario deve ser um inteiro"),
+      body("user_role")
+        .custom((value: string) =>
+          Object.values(UserRole).includes(value as UserRole)
+        )
+        .withMessage("role invalida"),
+      body("user_hours_per_week")
+        .isInt()
+        .withMessage("horas de trabalho deve ser numero inteiro"),
+    ];
+
+    this._router.post(
+      "/:project_id/users",
+      userProjectRoleValidation,
+      this.validate,
+      this.controller.addUserToProject
+    );
+
+    this._router.put(
+      "/:project_id/users",
+      userProjectRoleValidation,
+      this.validate,
+      this.controller.updateUserRole
+    );
+
+    return this._router
+  }
+}
