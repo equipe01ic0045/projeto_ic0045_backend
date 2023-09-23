@@ -22,7 +22,7 @@ export default class AuthController {
       res.cookie("token", token, {
         httpOnly: false,
         maxAge: 3600000,
-        sameSite: "strict",
+        sameSite: "strict"
       });
       
       new AuthSuccessResponse().send(res);
