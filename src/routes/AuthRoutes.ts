@@ -66,13 +66,44 @@
  *         description: Conflict. User with the same email already exists.
  */
 
-import { Router } from "express";
 import AuthController from "../controllers/AuthController";
+import BaseRoutes from "./abstract/BaseRoutes";
+import { body } from "express-validator";
+import { Router } from "express";
 
-const router = Router();
-const authController = new AuthController();
+export default class AuthRoutes extends BaseRoutes {
+  constructor(protected controller: AuthController = new AuthController()) {
+    super(controller);
+  }
 
-router.post("/login", authController.loginUser);
-router.post("/register", authController.registerUser);
+  get router(): Router {
+    this._router.post(
+      "/register",
+      [
+        body("full_name")
+          .isString()
+          .withMessage("Nome completo inválido")
+          .isLength({ min: 1 })
+          .withMessage("Insira o nome completo"),
+        body("email").isEmail().withMessage("Email inválido"),
+        body("password")
+          .isLength({ min: 8 })
+          .withMessage("Senha deve ter pelo menos 8 caracteres."),
+      ],
+      this.validate,
+      this.controller.registerUser
+    );
 
-export default router;
+    this._router.post(
+      "/login",
+      [
+        body("email").isEmail().withMessage("Email inválido"),
+        body("password").isString().withMessage("Senha deve ser uma string"),
+      ],
+      this.validate,
+      this.controller.loginUser
+    );
+
+    return this._router
+  }
+}
